@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Novel Nexus | Swap the stories, share the magic</title>
+    <!-- Three.js for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r134/three.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Poppins', sans-serif; }
+        body { background-color: #030305; color: #fff; overflow-x: hidden; }
+        
+        /* 3D Canvas Background */
+        #canvas-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1; }
+
+        /* Navbar & Logo */
+        nav { padding: 15px 50px; display: flex; justify-content: space-between; align-items: center; background: rgba(3, 3, 5, 0.6); backdrop-filter: blur(15px); position: fixed; width: 100%; z-index: 100; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .logo-container { display: flex; align-items: center; gap: 15px; cursor: pointer; }
+        .logo-text { font-size: 24px; font-weight: 700; background: linear-gradient(90deg, #00ffff, #8a2be2); -webkit-background-clip: text; -webkit-text-fill-color: transparent; letter-spacing: 1px;}
+        
+        .nav-links { display: flex; gap: 30px; }
+        .nav-links a { color: #fff; text-decoration: none; font-weight: 600; font-size: 1rem; transition: color 0.3s; cursor: pointer; }
+        .nav-links a:hover, .nav-links a.active-link { color: #00ffff; text-shadow: 0 0 10px rgba(0,255,255,0.5); }
+
+        /* Page Routing (SPA logic) */
+        .page-view { display: none; opacity: 0; transition: opacity 0.4s ease-in-out; padding-top: 100px; min-height: 100vh; }
+        .page-view.active { display: block; opacity: 1; }
+
+        /* Common Page Styles */
+        .page-header { text-align: center; margin-bottom: 50px; }
+        .page-header h2 { font-size: 3rem; text-shadow: 0 0 20px rgba(0, 255, 255, 0.3); margin-bottom: 10px;}
+        .page-header p { color: #a8c0ff; font-size: 1.2rem; }
+
+        /* Hero Section (Home) */
+        .hero { height: calc(100vh - 100px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .hero h1 { font-size: 4.5rem; margin-bottom: 15px; font-weight: 700; text-shadow: 0 0 30px rgba(138, 43, 226, 0.6); }
+        .hero p { font-size: 1.5rem; color: #a8c0ff; font-weight: 300; letter-spacing: 1px; }
+
+        /* 3D Book Section */
+        .about-section { height: 100vh; display: flex; flex-direction: column; justify-content: center; align-items: center; perspective: 1200px; }
+        .about-section h2 { margin-bottom: 50px; font-size: 2.5rem; text-shadow: 0 0 15px rgba(0, 255, 255, 0.4); }
+        .book-container { position: relative; width: 320px; height: 450px; }
+        .book { width: 100%; height: 100%; position: absolute; transform-style: preserve-3d; transition: transform 1.2s cubic-bezier(0.4, 0.0, 0.2, 1); cursor: pointer; }
+        .book-container:hover .book { transform: rotateY(-180deg); }
+        .page { position: absolute; width: 100%; height: 100%; border-radius: 5px 15px 15px 5px; display: flex; align-items: center; justify-content: center; padding: 30px; text-align: center; backface-visibility: hidden; box-shadow: 0 0 30px rgba(0,0,0,0.8); }
+        .front { z-index: 2; background: linear-gradient(135deg, #0f0c29, #302b63, #24243e); border: 2px solid rgba(0, 255, 255, 0.3); }
+        .front-content { font-size: 2rem; font-weight: 700; color: #fff; text-transform: uppercase; letter-spacing: 2px; }
+        .front-content span { display: block; font-size: 1rem; color: #00ffff; margin-top: 10px; font-weight: 300; }
+        .back { transform: rotateY(180deg); background: rgba(15, 12, 41, 0.85); backdrop-filter: blur(15px); border: 1px solid rgba(138, 43, 226, 0.4); border-radius: 15px 5px 5px 15px; }
+        
+        /* Glassmorphism Cards & Grid */
+        .content-container { padding: 20px 10%; }
+        .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 40px; }
+        .glass-card { background: rgba(255, 255, 255, 0.03); border-radius: 20px; padding: 40px; border: 1px solid rgba(255, 255, 255, 0.05); box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.5); backdrop-filter: blur(20px); transition: all 0.4s ease; position: relative; overflow: hidden; }
+        .glass-card:hover { transform: translateY(-10px); border-color: rgba(138, 43, 226, 0.5); box-shadow: 0 15px 45px 0 rgba(138, 43, 226, 0.2); }
+        .glass-card h3 { font-size: 1.6rem; margin-bottom: 15px; color: #00ffff; }
+        .glass-card p { color: #d1d5db; font-size: 1rem; line-height: 1.6; margin-bottom: 25px; }
+        
+        .btn { display: inline-block; padding: 12px 25px; background: transparent; border: 1px solid #8a2be2; color: #fff; text-decoration: none; border-radius: 30px; font-weight: 600; transition: all 0.3s; cursor: pointer; text-align: center; }
+        .btn:hover { background: #8a2be2; box-shadow: 0 0 15px #8a2be2; }
+        .btn-full { width: 100%; display: block; }
+        
+        .badge { position: absolute; top: 20px; right: 20px; background: linear-gradient(45deg, #ff00cc, #333399); padding: 5px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: bold; letter-spacing: 1px; }
+
+        /* Forms */
+       /* Forms */
+.form-group { margin-bottom: 20px; text-align: left; }
+.form-group label { display: block; margin-bottom: 8px; color: #a8c0ff; font-weight: 600; }
+.form-control { width: 100%; padding: 12px; border-radius: 10px; background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1); color: #fff; outline: none; transition: border 0.3s; }
+.form-control:focus { border-color: #00ffff; }
+.form-control option { background-color: #1a1a24; color: #ffffff; }
+
+        /* Radar Specifics */
+        .radar-location { font-size: 0.85rem; color: #ff00cc; font-weight: 600; margin-bottom: 10px; display: block; }
+
+    </style>
+</head>
+<body>
+
+    <!-- 3D Particle Background -->
+    <div id="canvas-container"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <div class="logo-container" onclick="navigate('home')">
+            <svg width="40" height="40" viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <linearGradient id="neonGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                        <stop offset="0%" style="stop-color:#00ffff;stop-opacity:1" />
+                        <stop offset="100%" style="stop-color:#8a2be2;stop-opacity:1" />
+                    </linearGradient>
+                </defs>
+                <g>
+                    <path d="M 50 35 C 30 15, 10 25, 20 45 C 30 65, 45 45, 50 35 C 55 45, 70 65, 80 45 C 90 25, 70 15, 50 35 Z" fill="none" stroke="url(#neonGradient)" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M 20 20 Q 35 15 50 35 Q 65 15 80 20" fill="none" stroke="url(#neonGradient)" stroke-width="4" stroke-linecap="round"/>
+                    <path d="M 30 10 Q 40 10 50 35 Q 60 10 70 10" fill="none" stroke="url(#neonGradient)" stroke-width="4" stroke-linecap="round"/>
+                </g>
+            </svg>
+            <div class="logo-text">Novel Nexus</div>
+        </div>
+        <div class="nav-links">
+            <a onclick="navigate('home')" id="nav-home" class="active-link">Home</a>
+            <a onclick="navigate('radar')" id="nav-radar">Radar</a>
+            <a onclick="navigate('profile')" id="nav-profile">Profile</a>
+            <a onclick="navigate('add')" id="nav-add">Add Book</a>
+        </div>
+    </nav>
+
+    <!-- PAGE 1: HOME -->
+    <div id="home" class="page-view active">
+        <section class="hero">
+            <h1>Novel Nexus</h1>
+            <p>Swap the stories, share the magic.</p>
+        </section>
+
+        <section class="about-section">
+            <h2>How It Works</h2>
+            <div class="book-container">
+                <div class="book">
+                    <div class="page front">
+                        <div class="front-content">The Nexus Guide<span>Hover to Open</span></div>
+                    </div>
+                    <div class="page back">
+                        <p style="color: #e0e0e0;">Why let great stories collect dust? Connect with readers in your city. Swap a book you've finished for a new adventure. Save money, meet fellow readers, and keep the magic of reading alive!</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="content-container">
+            <h2 class="page-header" style="font-size:2.5rem; margin-bottom: 40px;">The Reading Hub</h2>
+            <div class="grid">
+                <div class="glass-card">
+                    <h3>My Reading Profile</h3>
+                    <p>Track your reading habit. You have exchanged 4 books this month. Keep the streak going!</p>
+                    <a onclick="navigate('profile')" class="btn">View Profile</a>
+                </div>
+                <div class="glass-card">
+                    <h3>Find Books Nearby</h3>
+                    <p>Discover what people are reading in your neighborhood right now.</p>
+                    <a onclick="navigate('radar')" class="btn">Open Radar</a>
+                </div>
+                <div class="glass-card">
+                    <h3>Add a Book</h3>
+                    <p>Finished a great story? Put it up for exchange and let others know it's available.</p>
+                    <a onclick="navigate('add')" class="btn">+ List a Book</a>
+                </div>
+            </div>
+        </section>
+        <br><br><br>
+    </div>
+
+    <!-- PAGE 2: RADAR -->
+    <div id="radar" class="page-view">
+        <div class="page-header">
+            <h2>Local Exchange Radar</h2>
+            <p>Scanning for books available near you...</p>
+        </div>
+        <div class="content-container">
+            <div class="grid">
+                <!-- Mock Book 1 -->
+                <div class="glass-card">
+                    <span class="radar-location">📍 1.5 km away (Near PSIT Campus)</span>
+                    <h3>Clean Code</h3>
+                    <p><strong>Author:</strong> Robert C. Martin<br><strong>Condition:</strong> Like New<br><strong>Looking for:</strong> Any good data structures book or sci-fi novel.</p>
+                    <a href="#" class="btn btn-full">Request Trade</a>
+                </div>
+                <!-- Mock Book 2 -->
+                <div class="glass-card">
+                    <span class="radar-location">📍 3.0 km away (Kalyanpur)</span>
+                    <h3>Atomic Habits</h3>
+                    <p><strong>Author:</strong> James Clear<br><strong>Condition:</strong> Gently Used<br><strong>Looking for:</strong> Self-help, Biographies.</p>
+                    <a href="#" class="btn btn-full">Request Trade</a>
+                </div>
+                <!-- Mock Book 3 -->
+                <div class="glass-card">
+                    <span class="radar-location">📍 5.2 km away (Kakadeo)</span>
+                    <h3>The Alchemist</h3>
+                    <p><strong>Author:</strong> Paulo Coelho<br><strong>Condition:</strong> Well Read<br><strong>Looking for:</strong> Open to any fiction.</p>
+                    <a href="#" class="btn btn-full">Request Trade</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 3: PROFILE -->
+    <div id="profile" class="page-view">
+        <div class="page-header">
+            <h2>My Profile</h2>
+            <p>Your reading journey and rewards</p>
+        </div>
+        <div class="content-container">
+            <div class="grid">
+                <div class="glass-card">
+                    <h3>Your Stats</h3>
+                    <p style="font-size: 1.2rem; color: #00ffff; font-weight: 600; margin-bottom: 10px;">📚 14 Books Exchanged</p>
+                    <p style="font-size: 1.2rem; color: #ff00cc; font-weight: 600;">🔥 12 Day Reading Streak</p>
+                </div>
+                <div class="glass-card">
+                    <div class="badge">REWARDS</div>
+                    <h3>Top Trader Discount</h3>
+                    <p>Because you are a Top Trader this month, you've unlocked a 50% discount on your next premium book exchange!</p>
+                    <a href="#" class="btn">Claim Reward Code</a>
+                </div>
+                <div class="glass-card" style="grid-column: 1 / -1;">
+                    <h3>Your Active Listings</h3>
+                    <p>You are currently offering: <strong>The Pragmatic Programmer</strong>. (2 people nearby are interested!)</p>
+                    <a href="#" class="btn">Manage Listings</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- PAGE 4: ADD BOOK -->
+    <div id="add" class="page-view">
+        <div class="page-header">
+            <h2>List a Book</h2>
+            <p>Add a book to the Nexus and find a new story</p>
+        </div>
+        <div class="content-container" style="max-width: 600px; margin: 0 auto;">
+            <div class="glass-card">
+                <div class="form-group">
+                    <label>Book Title</label>
+                    <input type="text" class="form-control" placeholder="e.g. Harry Potter and the Sorcerer's Stone">
+                </div>
+                <div class="form-group">
+                    <label>Author</label>
+                    <input type="text" class="form-control" placeholder="e.g. J.K. Rowling">
+                </div>
+                <div class="form-group">
+                    <label>Condition</label>
+                    <select class="form-control">
+                        <option>Like New</option>
+                        <option>Gently Used</option>
+                        <option>Well Read</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>What do you want in exchange?</label>
+                    <input type="text" class="form-control" placeholder="Specific book, genre, or 'Open to offers'">
+                </div>
+                <a href="#" class="btn btn-full" onclick="alert('Book Added Successfully to the Nexus!')">Add to Nexus</a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. SINGLE PAGE APPLICATION (SPA) ROUTING LOGIC ---
+        function navigate(pageId) {
+            // Hide all pages
+            document.querySelectorAll('.page-view').forEach(page => {
+                page.classList.remove('active');
+            });
+            // Show requested page
+            document.getElementById(pageId).classList.add('active');
+            
+            // Update active state on navbar links
+            document.querySelectorAll('.nav-links a').forEach(link => {
+                link.classList.remove('active-link');
+            });
+            if(document.getElementById('nav-' + pageId)) {
+                document.getElementById('nav-' + pageId).classList.add('active-link');
+            }
+
+            // Scroll to top smoothly
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        // --- 2. THREE.JS MAGICAL BACKGROUND ---
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+        
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.getElementById('canvas-container').appendChild(renderer.domElement);
+
+        const geometry = new THREE.BufferGeometry();
+        const particlesCount = 800; 
+        const posArray = new Float32Array(particlesCount * 3);
+        
+        for(let i = 0; i < particlesCount * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 15;
+        }
+        
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+        
+        const material = new THREE.PointsMaterial({
+            size: 0.035,
+            color: 0x00ffff,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+        
+        const particlesMesh = new THREE.Points(geometry, material);
+        scene.add(particlesMesh);
+        camera.position.z = 4;
+
+        let mouseX = 0, mouseY = 0, targetX = 0, targetY = 0;
+        const windowHalfX = window.innerWidth / 2;
+        const windowHalfY = window.innerHeight / 2;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = (event.clientX - windowHalfX) * 0.001;
+            mouseY = (event.clientY - windowHalfY) * 0.001;
+        });
+
+        function animate() {
+            requestAnimationFrame(animate);
+            targetX = mouseX * 0.5;
+            targetY = mouseY * 0.5;
+            particlesMesh.rotation.y += 0.002;
+            particlesMesh.rotation.x += 0.001;
+            particlesMesh.rotation.y += 0.05 * (targetX - particlesMesh.rotation.y);
+            particlesMesh.rotation.x += 0.05 * (targetY - particlesMesh.rotation.x);
+            
+            const time = Date.now() * 0.001;
+            material.color.setHSL(0.6 + Math.sin(time * 0.2) * 0.1, 1.0, 0.5); 
+            
+            renderer.render(scene, camera);
+        }
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
